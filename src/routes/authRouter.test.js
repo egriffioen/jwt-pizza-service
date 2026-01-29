@@ -22,6 +22,19 @@ test('login', async () => {
   expect(loginRes.body.user).toMatchObject(expectedUser);
 });
 
+test('get user', async () => {
+  const getRes = await request(app)
+    .get('/api/user/me')
+    .set('Authorization', `Bearer ${testUserAuthToken}`);
+  
+  expect(getRes.status).toBe(200);
+  console.log(getRes.body);
+  expect(getRes.body.id).toBeDefined();
+  expect(getRes.body.name).toEqual(testUser.name);
+  expect(getRes.body.email).toEqual(testUser.email);
+  expect(getRes.body.roles).toEqual([{ role: 'diner' }]);
+});
+
 test('logout', async () => {
   const logoutRes = await request(app)
     .delete('/api/auth')
@@ -30,6 +43,7 @@ test('logout', async () => {
   expect(logoutRes.status).toBe(200);
   expect(logoutRes.body.message).toEqual("logout successful");
 });
+
 
 
 
