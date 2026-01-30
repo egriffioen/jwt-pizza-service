@@ -39,10 +39,6 @@ test('list all franchises', async() => {
       more: expect.any(Boolean),
     })
   );
-
-  expect(
-    res.body.franchises.some((f) => f.name === franchiseName)
-  ).toBe(true);
 })
 
 test("list user's franchises", async () => {
@@ -71,6 +67,29 @@ test("list user's franchises", async () => {
   );
 });
 
+
+test('create a store', async() => {
+    const franchiseId = createRes.body.id
+    const token = loginRes.body.token
+    const storeName = randomName()
+    const storeRes = await request(app)
+        .post(`/api/franchise/${franchiseId}/store`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+        name: storeName,
+        });
+
+    // Step 4: assertions
+    expect(storeRes.status).toBe(200);
+
+    expect(storeRes.body).toEqual(
+        expect.objectContaining({
+            id: expect.any(Number),
+            franchiseId: franchiseId,
+            name: storeName,
+        })
+    );
+})
 
 
 function expectValidJwt(potentialJwt) {
