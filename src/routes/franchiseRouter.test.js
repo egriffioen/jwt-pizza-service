@@ -2,11 +2,14 @@ const request = require('supertest');
 const app = require('../service');
 
 let franchiseName;
+let admin;
+let createRes;
+let loginRes;
 
 beforeAll(async () => {
-    const admin = await createAdminUser()
+    admin = await createAdminUser()
     
-    const loginRes = await request(app).put('/api/auth').send({
+    loginRes = await request(app).put('/api/auth').send({
     email: admin.email,
     password: admin.password,});
     expect(loginRes.status).toBe(200);
@@ -17,7 +20,7 @@ beforeAll(async () => {
         admins: [{ email: admin.email }],
     };
     
-    const createRes = (await request(app).post('/api/franchise')
+    createRes = (await request(app).post('/api/franchise')
     .set('Authorization', `Bearer ${loginRes.body.token}`)
     .send(franchise));
     expect(createRes.status).toBe(200);
@@ -37,11 +40,37 @@ test('list all franchises', async() => {
     })
   );
 
-  // verify our franchise exists
   expect(
     res.body.franchises.some((f) => f.name === franchiseName)
   ).toBe(true);
 })
+
+test("list user's franchises", async () => {
+  const userId = admin.id;
+
+  const res = await request(app)
+    .get(`/api/franchise/${userId}`)
+    .set('Authorization', `Bearer ${loginRes.body.token}`);
+
+  expect(res.status).toBe(200);
+  expect(Array.isArray(res.body)).toBe(true);
+
+  expect(res.body.length).toBeGreaterThan(0);
+
+  expect(
+    res.body.some((f) => f.name === franchiseName)
+  ).toBe(true);
+
+  const franchise = res.body.find(f => f.name === franchiseName);
+
+  expect(franchise).toEqual(
+    expect.objectContaining({
+      admins: expect.any(Array),
+      stores: expect.any(Array),
+    })
+  );
+});
+
 
 
 function expectValidJwt(potentialJwt) {
