@@ -5,6 +5,9 @@ let franchiseName;
 let admin;
 let createRes;
 let loginRes;
+let franchiseId;
+let token
+const storeName = randomName()
 
 beforeAll(async () => {
     admin = await createAdminUser()
@@ -69,9 +72,8 @@ test("list user's franchises", async () => {
 
 
 test('create a store', async() => {
-    const franchiseId = createRes.body.id
-    const token = loginRes.body.token
-    const storeName = randomName()
+    franchiseId = createRes.body.id
+    token = loginRes.body.token
     const storeRes = await request(app)
         .post(`/api/franchise/${franchiseId}/store`)
         .set('Authorization', `Bearer ${token}`)
@@ -79,7 +81,6 @@ test('create a store', async() => {
         name: storeName,
         });
 
-    // Step 4: assertions
     expect(storeRes.status).toBe(200);
 
     expect(storeRes.body).toEqual(
@@ -87,6 +88,29 @@ test('create a store', async() => {
             id: expect.any(Number),
             franchiseId: franchiseId,
             name: storeName,
+        })
+    );
+})
+
+test('delete a store', async () => {
+    franchiseId = createRes.body.id
+    token = loginRes.body.token
+        const storeRes = await request(app)
+        .post(`/api/franchise/${franchiseId}/store`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+        name: storeName,
+        });
+    let storeId = storeRes.body.id
+    const deleteRes = await request(app)
+        .delete(`/api/franchise/${franchiseId}/store/${storeId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+    
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body).toEqual(
+        expect.objectContaining({
+        message: 'store deleted',
         })
     );
 })
