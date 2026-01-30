@@ -1,34 +1,47 @@
 const request = require('supertest');
 const app = require('../service');
 
-const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
-let testUserAuthToken;
+let franchiseName;
 
 beforeAll(async () => {
-
-});
-
-test('create a franchise', async () => {
     const admin = await createAdminUser()
-
+    
     const loginRes = await request(app).put('/api/auth').send({
     email: admin.email,
     password: admin.password,});
     expect(loginRes.status).toBe(200);
     expectValidJwt(loginRes.body.token);
-
+    franchiseName = randomName();
     const franchise = {
-        name: randomName(),
+        name: franchiseName,
         admins: [{ email: admin.email }],
     };
-
+    
     const createRes = (await request(app).post('/api/franchise')
     .set('Authorization', `Bearer ${loginRes.body.token}`)
     .send(franchise));
     expect(createRes.status).toBe(200);
 });
 
+test('list all franchises', async() => {
+    const res = await request(app)
+    .get('/api/franchise')
+    .query({ page: 0, limit: 10 });
 
+  expect(res.status).toBe(200);
+
+  expect(res.body).toEqual(
+    expect.objectContaining({
+      franchises: expect.any(Array),
+      more: expect.any(Boolean),
+    })
+  );
+
+  // verify our franchise exists
+  expect(
+    res.body.franchises.some((f) => f.name === franchiseName)
+  ).toBe(true);
+})
 
 
 function expectValidJwt(potentialJwt) {
