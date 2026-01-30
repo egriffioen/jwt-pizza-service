@@ -115,6 +115,15 @@ test('delete a store', async () => {
     );
 })
 
+test('delete a franchise', async () => {
+    franchiseId = createRes.body.id
+    const deleteRes = await request(app)
+        .delete(`/api/franchise/${franchiseId}`);
+
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.message).toEqual('franchise deleted')
+})
+
 
 function expectValidJwt(potentialJwt) {
   expect(potentialJwt).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
