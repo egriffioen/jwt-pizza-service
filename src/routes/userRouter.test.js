@@ -70,6 +70,10 @@ test('list users as non-admin', async () => {
 
 test('list users as admin', async () => {
   const admin = await createAdminUser()
+
+  for(let i=0; i<5; i++) {
+    await registerUser(request(app));
+  }
     
   const loginRes = await request(app).put('/api/auth').send({
   email: admin.email,
