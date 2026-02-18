@@ -148,6 +148,11 @@ test('admin can filter users by name', async () => {
   expect(res.body.users[0].name).toBe(name);
 });
 
+test('delete user without auth', async () => {
+  const res = await request(app).delete('/api/user/1');
+  expect(res.status).toBe(401);
+});
+
 test('delete user not an admin', async () => {
   const [user, userToken] = await registerUser(request(app));
   const delRes = await request(app)
