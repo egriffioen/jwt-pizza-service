@@ -119,6 +119,35 @@ test('list users pagination', async () => {
     .not.toBe(page2.body.users[0].id);
 });
 
+test('admin can filter users by name', async () => {
+  const admin = await createAdminUser();
+  const loginRes = await request(app).put('/api/auth').send({
+    email: admin.email,
+    password: admin.password,
+  });
+
+  const token = loginRes.body.token;
+  let name = randomName();
+  let email = `${randomName()}@test.com`
+
+  await registerUser(request(app));
+  const specialUser = {
+    name: name,
+    email: email,
+    password: 'a',
+  };
+
+  await request(app).post('/api/auth').send(specialUser);
+
+  const res = await request(app)
+    .get(`/api/user?name=${name}`)
+    .set('Authorization', 'Bearer ' + token);
+
+  expect(res.status).toBe(200);
+  expect(res.body.users.length).toBe(1);
+  expect(res.body.users[0].name).toBe(name);
+});
+
 async function registerUser(service) {
   const testUser = {
     name: 'pizza diner',
