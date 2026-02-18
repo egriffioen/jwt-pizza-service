@@ -106,13 +106,17 @@ class DB {
     nameFilter = nameFilter.replace(/\*/g, '%');
 
     try {
-      let users = await this.query(connection, `SELECT id, name FROM user WHERE name LIKE ? LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter]);
-
+      let users = await this.query(connection, `SELECT id, name, email FROM user WHERE name LIKE ? LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter]);
       const more = users.length > limit;
       if (more) {
         users = users.slice(0, limit);
       }
-      return [users, more];
+      let fullUserList = []
+      for (const user of users) {
+        const fullUserInfo = await this.getUser(user.email, user.password);
+        fullUserList.push(fullUserInfo);
+      }
+      return [fullUserList, more];
     } finally {
       connection.end();
     }

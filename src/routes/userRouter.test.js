@@ -69,6 +69,13 @@ test('list users', async () => {
   expect(listUsersRes.body).toHaveProperty('users');
   expect(listUsersRes.body).toHaveProperty('more');
   expect(Array.isArray(listUsersRes.body.users)).toBe(true);
+  for (const user of listUsersRes.body.users) {
+    expect(user).toHaveProperty('id');
+    expect(user).toHaveProperty('name');
+    expect(user).toHaveProperty('email');
+    expect(user).toHaveProperty('roles');
+    expect(user).not.toHaveProperty('password');
+  }
 });
 
 async function registerUser(service) {
