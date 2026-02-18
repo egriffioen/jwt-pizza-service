@@ -99,6 +99,26 @@ test('list users as admin', async () => {
   expect(admin.roles.role).toBe(listUsersRes.body.users[0].roles.role)
 });
 
+test('list users pagination', async () => {
+  admin = await createAdminUser()
+    
+  loginRes = await request(app).put('/api/auth').send({
+  email: admin.email,
+  password: admin.password,});
+  expect(loginRes.status).toBe(200);
+  expectValidJwt(loginRes.body.token);
+  const page1 = await request(app)
+    .get('/api/user?page=0&limit=5')
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
+
+  const page2 = await request(app)
+    .get('/api/user?page=1&limit=5')
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
+
+  expect(page1.body.users[0].id)
+    .not.toBe(page2.body.users[0].id);
+});
+
 async function registerUser(service) {
   const testUser = {
     name: 'pizza diner',
