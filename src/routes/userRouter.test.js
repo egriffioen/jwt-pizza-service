@@ -149,7 +149,10 @@ test('admin can filter users by name', async () => {
 });
 
 test('delete user', async () => {
-  const delRes = await request(app).delete('/api/auth');
+  const [user, userToken] = await registerUser(request(app));
+  const delRes = await request(app)
+    .delete('/api/user/1')
+    .set('Authorization', 'Bearer ' + userToken);
   expect(delRes.status).toBe(200);
 });
 
