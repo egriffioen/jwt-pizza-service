@@ -60,27 +60,41 @@ test('list users unauthorized', async () => {
   expect(listUsersRes.status).toBe(401);
 });
 
-test('list users', async () => {
+test('list users as non-admin', async () => {
   const [user, userToken] = await registerUser(request(app));
   const listUsersRes = await request(app)
     .get('/api/user')
     .set('Authorization', 'Bearer ' + userToken);
+  expect(listUsersRes.status).toBe(403);
+});
+
+test('list users as admin', async () => {
+  admin = await createAdminUser()
+    
+  loginRes = await request(app).put('/api/auth').send({
+  email: admin.email,
+  password: admin.password,});
+  expect(loginRes.status).toBe(200);
+  expectValidJwt(loginRes.body.token);
+  const listUsersRes = await request(app)
+    .get('/api/user')
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
   expect(listUsersRes.status).toBe(200);
   expect(listUsersRes.body).toHaveProperty('users');
   expect(listUsersRes.body).toHaveProperty('more');
   expect(Array.isArray(listUsersRes.body.users)).toBe(true);
-  for (const user of listUsersRes.body.users) {
-    expect(user).toHaveProperty('id');
-    expect(user).toHaveProperty('name');
-    expect(user).toHaveProperty('email');
-    expect(user).toHaveProperty('roles');
-    expect(user).not.toHaveProperty('password');
-    console.log(user.email, user.name, user.id, user.roles)
+  for (const u of listUsersRes.body.users) {
+    expect(u).toHaveProperty('id');
+    expect(u).toHaveProperty('name');
+    expect(u).toHaveProperty('email');
+    expect(u).toHaveProperty('roles');
+    expect(u).not.toHaveProperty('password');
+    console.log(u.email, u.name, u.id, u.roles)
   }
-  expect(user.name).toBe(listUsersRes.body.users[0].name);
-  expect(user.email).toBe(listUsersRes.body.users[0].email);
-  expect(user.id).toBe(listUsersRes.body.users[0].id);
-  expect(user.roles.role).toBe(listUsersRes.body.users[0].roles.role)
+  expect(admin.name).toBe(listUsersRes.body.users[0].name);
+  expect(admin.email).toBe(listUsersRes.body.users[0].email);
+  expect(admin.id).toBe(listUsersRes.body.users[0].id);
+  expect(admin.roles.role).toBe(listUsersRes.body.users[0].roles.role)
 });
 
 async function registerUser(service) {
@@ -93,6 +107,17 @@ async function registerUser(service) {
   registerRes.body.user.password = testUser.password;
 
   return [registerRes.body.user, registerRes.body.token];
+}
+
+const { Role, DB } = require('../database/database.js');
+
+async function createAdminUser() {
+  let user = { password: 'toomanysecrets', roles: [{ role: Role.Admin }] };
+  user.name = randomName();
+  user.email = user.name + '@admin.com';
+
+  user = await DB.addUser(user);
+  return { ...user, password: 'toomanysecrets' };
 }
 
 function randomName() {
