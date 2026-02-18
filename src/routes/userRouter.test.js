@@ -61,7 +61,7 @@ test('list users unauthorized', async () => {
 });
 
 test('list users as non-admin', async () => {
-  const [user, userToken] = await registerUser(request(app));
+  const [, userToken] = await registerUser(request(app));
   const listUsersRes = await request(app)
     .get('/api/user')
     .set('Authorization', 'Bearer ' + userToken);
@@ -69,9 +69,9 @@ test('list users as non-admin', async () => {
 });
 
 test('list users as admin', async () => {
-  admin = await createAdminUser()
+  const admin = await createAdminUser()
     
-  loginRes = await request(app).put('/api/auth').send({
+  const loginRes = await request(app).put('/api/auth').send({
   email: admin.email,
   password: admin.password,});
   expect(loginRes.status).toBe(200);
@@ -100,9 +100,9 @@ test('list users as admin', async () => {
 });
 
 test('list users pagination', async () => {
-  admin = await createAdminUser()
+  const admin = await createAdminUser()
     
-  loginRes = await request(app).put('/api/auth').send({
+  const loginRes = await request(app).put('/api/auth').send({
   email: admin.email,
   password: admin.password,});
   expect(loginRes.status).toBe(200);
@@ -154,7 +154,7 @@ test('delete user without auth', async () => {
 });
 
 test('delete user not an admin', async () => {
-  const [user, userToken] = await registerUser(request(app));
+  const [, userToken] = await registerUser(request(app));
   const delRes = await request(app)
     .delete('/api/user/1')
     .set('Authorization', 'Bearer ' + userToken);
