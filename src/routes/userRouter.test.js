@@ -156,6 +156,34 @@ test('delete user not an admin', async () => {
   expect(delRes.status).toBe(403);
 });
 
+test('delete user as an admin', async () => {
+  const admin = await createAdminUser();
+
+  const loginRes = await request(app).put('/api/auth').send({
+    email: admin.email,
+    password: admin.password,
+  });
+
+  const page1 = await request(app)
+    .get('/api/user?page=0&limit=5')
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
+
+  const userToDelete = page1.body.users.find(u => u.id !== admin.id);
+  const userId = userToDelete.id;
+
+  const delRes = await request(app)
+    .delete(`/api/user/${userId}`)
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
+
+  expect(delRes.status).toBe(200);
+
+  const page2 = await request(app)
+    .get('/api/user?page=0&limit=5')
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
+
+  expect(page2.body.users.some(u => u.id === userId)).toBe(false);
+});
+
 async function registerUser(service) {
   const testUser = {
     name: 'pizza diner',
