@@ -77,7 +77,7 @@ test('list users as admin', async () => {
   expect(loginRes.status).toBe(200);
   expectValidJwt(loginRes.body.token);
   const listUsersRes = await request(app)
-    .get('/api/user')
+    .get('/api/user?limit=5')
     .set('Authorization', 'Bearer ' + loginRes.body.token);
   expect(listUsersRes.status).toBe(200);
   expect(listUsersRes.body).toHaveProperty('users');
@@ -91,6 +91,8 @@ test('list users as admin', async () => {
     expect(u).not.toHaveProperty('password');
     console.log(u.email, u.name, u.id, u.roles)
   }
+  expect(listUsersRes.body.users.length).toBeLessThanOrEqual(5);
+  expect(listUsersRes.body.more).toBe(true);
   expect(admin.name).toBe(listUsersRes.body.users[0].name);
   expect(admin.email).toBe(listUsersRes.body.users[0].email);
   expect(admin.id).toBe(listUsersRes.body.users[0].id);
