@@ -66,6 +66,8 @@ test('list users', async () => {
     .get('/api/user')
     .set('Authorization', 'Bearer ' + userToken);
   expect(listUsersRes.status).toBe(200);
+  expect(listUsersRes.body).toHaveProperty('users');
+  expect(Array.isArray(listUsersRes.body.users)).toBe(true);
 });
 
 async function registerUser(service) {
