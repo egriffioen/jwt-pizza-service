@@ -161,11 +161,19 @@ class DB {
         await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [userId]);
         // await this.query(connection, `DELETE FROM auth WHERE userId=?`, [userId]);
         // await this.query(connection, `DELETE FROM dinerOrder WHERE dinerId=?`, [userId]);
-        await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+        const result = await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+        if (result.affectedRows === 0) {
+          throw new StatusCodeError('User not found', 404);
+        }
         await connection.commit();
-      } catch {
+      } catch(err) {
         await connection.rollback();
-        throw new StatusCodeError('unable to delete user', 500);
+        if (err instanceof StatusCodeError) {
+          throw err;
+        }
+        else {
+          throw new StatusCodeError('unable to delete user', 500);
+        }
       }
     } finally {
       connection.end();
