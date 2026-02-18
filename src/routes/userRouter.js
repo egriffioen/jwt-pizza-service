@@ -77,12 +77,21 @@ userRouter.delete(
   })
 );
 
+// // listUsers
+// userRouter.get(
+//   '/',
+//   authRouter.authenticateToken,
+//   asyncHandler(async (req, res) => {
+//     res.json({ message: 'not implemented', users: [], more: false });
+//   })
+// );
+
 // listUsers
 userRouter.get(
   '/',
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    res.json({ message: 'not implemented', users: [], more: false });
+    res.json({});
   })
 );
 
