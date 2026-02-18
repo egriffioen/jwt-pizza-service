@@ -75,7 +75,12 @@ test('list users', async () => {
     expect(user).toHaveProperty('email');
     expect(user).toHaveProperty('roles');
     expect(user).not.toHaveProperty('password');
+    console.log(user.email, user.name, user.id, user.roles)
   }
+  expect(user.name).toBe(listUsersRes.body.users[0].name);
+  expect(user.email).toBe(listUsersRes.body.users[0].email);
+  expect(user.id).toBe(listUsersRes.body.users[0].id);
+  expect(user.roles.role).toBe(listUsersRes.body.users[0].roles.role)
 });
 
 async function registerUser(service) {
