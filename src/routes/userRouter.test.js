@@ -189,6 +189,21 @@ test('delete user as an admin', async () => {
   expect(page2.body.users.some(u => u.id === userId)).toBe(false);
 });
 
+test('delete user with invalid id format', async () => {
+  const admin = await createAdminUser();
+
+  const loginRes = await request(app).put('/api/auth').send({
+    email: admin.email,
+    password: admin.password,
+  });
+
+  const res = await request(app)
+    .delete('/api/user/abc')
+    .set('Authorization', 'Bearer ' + loginRes.body.token);
+
+  expect(res.status).toBe(404);
+});
+
 test('delete nonexistent user as admin', async () => {
   const admin = await createAdminUser();
 
