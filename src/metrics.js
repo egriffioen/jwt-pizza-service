@@ -31,10 +31,19 @@ function getMemoryUsagePercentage() {
 const requests = {};
 let greetingChangedCount = 0;
 
-// Function to track when the greeting is changed
-function greetingChanged() {
-  greetingChangedCount++;
+let authAttempts = {
+  success: 0,
+  failed: 0
+};
+
+function recordAuthAttempt(success) {
+  if (success) {
+    authAttempts.success++;
+  } else {
+    authAttempts.failed++;
+  }
 }
+
 
 // Middleware to track requests
 function requestTracker(req, res, next) {
@@ -52,9 +61,10 @@ setInterval(() => {
     metrics.push(createMetric('requests', requests[endpoint], '1', 'sum', 'asInt', { method, path }));
   });
 
-  metrics.push(createMetric('greetingChange', greetingChangedCount, '1', 'sum', 'asInt', {}));
   metrics.push(createMetric('cpu', cpuValue, '%', 'gauge', 'asDouble', {}));
   metrics.push(createMetric('memory', getMemoryUsagePercentage(), '%', 'gauge', 'asDouble', {}));
+  metrics.push(createMetric('auth_attempts', authAttempts.success, '1', 'sum', 'asInt', {result: 'success'}));
+  metrics.push(createMetric('auth_attempts', authAttempts.failed, '1', 'sum', 'asInt', {result: 'failed'}));
 
 
   sendMetricToGrafana(metrics);
@@ -120,4 +130,4 @@ function sendMetricToGrafana(metrics) {
     });
 }
 
-module.exports = { requestTracker, greetingChanged };
+module.exports = { requestTracker, recordAuthAttempt };
