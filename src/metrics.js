@@ -3,16 +3,29 @@ const config = require('./config');
 const os = require('os');
 
 function getCpuUsagePercentage() {
-  const cpuUsage = os.loadavg()[0] / os.cpus().length;
-  return cpuUsage.toFixed(2) * 100;
+  const cpus = os.cpus();
+
+  let idle = 0;
+  let total = 0;
+
+  cpus.forEach(cpu => {
+    for (const type in cpu.times) {
+      total += cpu.times[type];
+    }
+    idle += cpu.times.idle;
+  });
+
+  const usage = 100 - (idle / total) * 100;
+  return Number(usage.toFixed(2));
 }
+
 
 function getMemoryUsagePercentage() {
   const totalMemory = os.totalmem();
   const freeMemory = os.freemem();
   const usedMemory = totalMemory - freeMemory;
   const memoryUsage = (usedMemory / totalMemory) * 100;
-  return memoryUsage.toFixed(2);
+  return Number(memoryUsage.toFixed(2));
 }
 // Metrics stored in memory
 const requests = {};
@@ -25,7 +38,7 @@ function greetingChanged() {
 
 // Middleware to track requests
 function requestTracker(req, res, next) {
-  const endpoint = `[${req.method}] ${req.path}`;
+  const endpoint = `${req.method}:${req.path}`;
   requests[endpoint] = (requests[endpoint] || 0) + 1;
   next();
 }
@@ -33,13 +46,15 @@ function requestTracker(req, res, next) {
 // This will periodically send metrics to Grafana
 setInterval(() => {
   const metrics = [];
-  const cpuValue = Number(getCpuUsagePercentage());
+  const cpuValue = getCpuUsagePercentage();
   Object.keys(requests).forEach((endpoint) => {
-    metrics.push(createMetric('requests', requests[endpoint], '1', 'sum', 'asInt', { endpoint }));
+    const [method, path] = endpoint.split(':');
+    metrics.push(createMetric('requests', requests[endpoint], '1', 'sum', 'asInt', { method, path }));
   });
 
   metrics.push(createMetric('greetingChange', greetingChangedCount, '1', 'sum', 'asInt', {}));
   metrics.push(createMetric('cpu', cpuValue, '%', 'gauge', 'asDouble', {}));
+  metrics.push(createMetric('memory', getMemoryUsagePercentage(), '%', 'gauge', 'asDouble', {}));
 
 
   sendMetricToGrafana(metrics);
