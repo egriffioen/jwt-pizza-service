@@ -38,6 +38,17 @@ let authAttempts = {
 let pizzasSold = 0;
 let revenueTotal = 0;
 let orderFailures = 0;
+const allLatencies = [];
+
+function recordLatency(durationMs) {
+  allLatencies.push(durationMs);
+}
+
+const pizzaCreationLatency = [];
+
+function recordPizzaLatency(durationMs) {
+  pizzaCreationLatency.push(durationMs);
+}
 
 function recordAuthAttempt(success) {
   if (success) {
@@ -83,11 +94,22 @@ function cleanupInactiveUsers() {
 
 // Middleware to track requests
 function requestTracker(req, res, next) {
+  const start = Date.now()
   const endpoint = `${req.method}:${req.path}`;
   requests[endpoint] = (requests[endpoint] || 0) + 1;
   if (req.user) {
     activeUsers.set(req.user.id, Date.now());
   }
+  res.on('finish', () => {
+    const end = Date.now()
+    const durationMs = Number(end - start)
+    recordLatency(durationMs);
+    //console.log(req.method, req.baseUrl, req.path, req.originalUrl);
+    if (req.method === 'POST' && req.baseUrl === '/api/order') {
+      console.log('Pizza creation latency (ms):', durationMs);
+      recordPizzaLatency(durationMs);
+    }
+  });
   next();
 }
 
@@ -110,6 +132,21 @@ setInterval(() => {
   metrics.push(createMetric('pizzas_sold', pizzasSold, '1', 'sum', 'asInt', {}));
   metrics.push(createMetric('revenue', revenueTotal, 'USD', 'sum', 'asDouble', {}));
   metrics.push(createMetric('order_failures', orderFailures, '1', 'sum', 'asInt', {}));
+
+  let avgLatency = 0;
+  if (allLatencies.length > 0) {
+    const sum = allLatencies.reduce((a, b) => a + b, 0);
+    avgLatency = sum / allLatencies.length;
+    allLatencies.length = 0; // reset after sending
+  }
+
+  let pizzaLatency = 0;
+  if (pizzaCreationLatency.length > 0) {
+    pizzaLatency = pizzaCreationLatency.reduce((a, b) => a + b, 0) / pizzaCreationLatency.length;
+    pizzaCreationLatency.length = 0;
+  }
+  metrics.push(createMetric('latency_avg', avgLatency, 'ms', 'gauge', 'asDouble', {}));
+  metrics.push(createMetric('pizza_latency', pizzaLatency, 'ms', 'gauge', 'asDouble', {}));
 
   console.log("Active users:", activeUsers.size);
   console.log("Pizzas sold total:", pizzasSold);

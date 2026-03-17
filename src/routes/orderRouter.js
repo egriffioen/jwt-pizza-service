@@ -78,6 +78,7 @@ orderRouter.post(
   '/',
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    //const start = Date.now();
     const orderReq = req.body;
     const order = await DB.addDinerOrder(req.user, orderReq);
     const r = await fetch(`${config.factory.url}/api/order`, {
@@ -86,6 +87,8 @@ orderRouter.post(
       body: JSON.stringify({ diner: { id: req.user.id, name: req.user.name, email: req.user.email }, order }),
     });
     const j = await r.json();
+
+    //metrics.recordLatency('pizza_creation', duration);
     if (r.ok) {
       metrics.recordOrderSuccess(order.items)
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
