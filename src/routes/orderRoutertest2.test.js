@@ -37,7 +37,7 @@ jest.mock('./authRouter.js', () => ({
 // Mock fetch
 global.fetch = jest.fn();
 
-const { DB, Role } = require('../database/database.js');
+const { DB } = require('../database/database.js');
 const metrics = require('../metrics.js');
 const orderRouter = require('./orderRouter.js');
 
