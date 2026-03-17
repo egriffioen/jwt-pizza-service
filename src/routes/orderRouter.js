@@ -5,6 +5,7 @@ const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 
 const orderRouter = express.Router();
+const metrics = require('../metrics.js')
 
 orderRouter.docs = [
   {
@@ -86,8 +87,10 @@ orderRouter.post(
     });
     const j = await r.json();
     if (r.ok) {
+      metrics.recordOrderSuccess(order.items)
       res.send({ order, followLinkToEndChaos: j.reportUrl, jwt: j.jwt });
     } else {
+      metrics.recordOrderFailure()
       res.status(500).send({ message: 'Failed to fulfill order at factory', followLinkToEndChaos: j.reportUrl });
     }
   })

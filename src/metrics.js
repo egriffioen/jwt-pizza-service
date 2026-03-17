@@ -27,14 +27,17 @@ function getMemoryUsagePercentage() {
   const memoryUsage = (usedMemory / totalMemory) * 100;
   return Number(memoryUsage.toFixed(2));
 }
+
 // Metrics stored in memory
 const requests = {};
 const activeUsers = new Map(); // userId -> lastSeenTimestamp
-
 let authAttempts = {
   success: 0,
   failed: 0
 };
+let pizzasSold = 0;
+let revenueTotal = 0;
+let orderFailures = 0;
 
 function recordAuthAttempt(success) {
   if (success) {
@@ -42,6 +45,28 @@ function recordAuthAttempt(success) {
   } else {
     authAttempts.failed++;
   }
+}
+
+function recordOrderSuccess(items) {
+  if (!items || items.length === 0) return;
+
+  const pizzaCount = items.length;
+
+  const revenue = items.reduce((sum, item) => {
+    return sum + (item.price || 0);
+  }, 0);
+
+  pizzasSold += pizzaCount;
+  revenueTotal += revenue;
+
+  console.log("Order success:");
+  console.log("  pizzas added:", pizzaCount);
+  console.log("  revenue added:", revenue);
+}
+
+function recordOrderFailure() {
+  orderFailures += 1;
+  console.log("Order failed. Total failures:", orderFailures);
 }
 
 const ACTIVE_WINDOW = 5 * 60 * 1000; //5 minutes == 300,000 ms
@@ -82,7 +107,14 @@ setInterval(() => {
   metrics.push(createMetric('auth_attempts', authAttempts.success, '1', 'sum', 'asInt', {result: 'success'}));
   metrics.push(createMetric('auth_attempts', authAttempts.failed, '1', 'sum', 'asInt', {result: 'failed'}));
   metrics.push(createMetric('active_users', activeUsers.size, '1', 'gauge', 'asInt', {}))
+  metrics.push(createMetric('pizzas_sold', pizzasSold, '1', 'sum', 'asInt', {}));
+  metrics.push(createMetric('revenue', revenueTotal, 'USD', 'sum', 'asDouble', {}));
+  metrics.push(createMetric('order_failures', orderFailures, '1', 'sum', 'asInt', {}));
 
+  console.log("Active users:", activeUsers.size);
+  console.log("Pizzas sold total:", pizzasSold);
+  console.log("Revenue total:", revenueTotal);
+  console.log("Failures total:", orderFailures);
 
   sendMetricToGrafana(metrics);
 }, 10000);
@@ -147,4 +179,4 @@ function sendMetricToGrafana(metrics) {
     });
 }
 
-module.exports = { requestTracker, recordAuthAttempt };
+module.exports = { requestTracker, recordAuthAttempt, recordOrderSuccess, recordOrderFailure };
