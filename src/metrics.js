@@ -29,7 +29,7 @@ function getMemoryUsagePercentage() {
 }
 // Metrics stored in memory
 const requests = {};
-let greetingChangedCount = 0;
+const activeUsers = new Map(); // userId -> lastSeenTimestamp
 
 let authAttempts = {
   success: 0,
@@ -44,13 +44,29 @@ function recordAuthAttempt(success) {
   }
 }
 
+const ACTIVE_WINDOW = 5 * 60 * 1000; //5 minutes == 300,000 ms
+
+function cleanupInactiveUsers() {
+  const now = Date.now();
+  for (const [userId, lastSeen] of activeUsers.entries()) {
+    if (now - lastSeen > ACTIVE_WINDOW) {
+      activeUsers.delete(userId);
+    }
+  }
+}
+
 
 // Middleware to track requests
 function requestTracker(req, res, next) {
   const endpoint = `${req.method}:${req.path}`;
   requests[endpoint] = (requests[endpoint] || 0) + 1;
+  if (req.user) {
+    activeUsers.set(req.user.id, Date.now());
+  }
   next();
 }
+
+setInterval(cleanupInactiveUsers, 10000); // every 10 seconds
 
 // This will periodically send metrics to Grafana
 setInterval(() => {
@@ -65,6 +81,7 @@ setInterval(() => {
   metrics.push(createMetric('memory', getMemoryUsagePercentage(), '%', 'gauge', 'asDouble', {}));
   metrics.push(createMetric('auth_attempts', authAttempts.success, '1', 'sum', 'asInt', {result: 'success'}));
   metrics.push(createMetric('auth_attempts', authAttempts.failed, '1', 'sum', 'asInt', {result: 'failed'}));
+  metrics.push(createMetric('active_users', activeUsers.size, '1', 'gauge', 'asInt', {}))
 
 
   sendMetricToGrafana(metrics);
