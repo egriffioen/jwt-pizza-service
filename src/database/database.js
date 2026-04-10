@@ -64,13 +64,13 @@ class DB {
     try {
       const userResult = await this.query(connection, `SELECT * FROM user WHERE email=?`, [email]);
       const user = userResult[0];
-      if (!user || (password && !(await bcrypt.compare(password, user.password)))) {
-        metrics.recordAuthAttempt(false)
-        throw new StatusCodeError('unknown user', 404);
-      }
       if(password=="" || !password){
         metrics.recordAuthAttempt(false)
         throw new StatusCodeError('password required', 400);
+      }
+      if (!user || (password && !(await bcrypt.compare(password, user.password)))) {
+        metrics.recordAuthAttempt(false)
+        throw new StatusCodeError('unknown user', 404);
       }
       metrics.recordAuthAttempt(true)
 
@@ -137,21 +137,64 @@ class DB {
     nameFilter = nameFilter.replace(/\*/g, '%');
 
     try {
-      let users = await this.query(connection, `SELECT id, name, email FROM user WHERE name LIKE ? ORDER BY id DESC LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter]);
+      let users = await this.query(
+        connection,
+        `SELECT id, name, email FROM user WHERE name LIKE ? ORDER BY id DESC LIMIT ${limit + 1} OFFSET ${offset}`,
+        [nameFilter]
+      );
+
       const more = users.length > limit;
-      if (more) {
-        users = users.slice(0, limit);
-      }
-      let fullUserList = []
+      if (more) users = users.slice(0, limit);
+
+      const fullUserList = [];
+
       for (const user of users) {
-        const fullUserInfo = await this.getUser(user.email, user.password);
-        fullUserList.push(fullUserInfo);
+        const roleResult = await this.query(
+          connection,
+          `SELECT role, objectId FROM userRole WHERE userId=?`,
+          [user.id]
+        );
+
+        const roles = roleResult.map(r => ({
+          role: r.role,
+          objectId: r.objectId || undefined
+        }));
+
+        fullUserList.push({
+          ...user,
+          roles,
+          password: undefined
+        });
       }
+
       return [fullUserList, more];
     } finally {
       connection.end();
     }
   }
+
+  // async getUsers(authUser, page = 0, limit = 10, nameFilter = '*') {
+  //   const connection = await this.getConnection();
+
+  //   const offset = page * limit;
+  //   nameFilter = nameFilter.replace(/\*/g, '%');
+
+  //   try {
+  //     let users = await this.query(connection, `SELECT id, name, email, password FROM user WHERE name LIKE ? ORDER BY id DESC LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter]);
+  //     const more = users.length > limit;
+  //     if (more) {
+  //       users = users.slice(0, limit);
+  //     }
+  //     let fullUserList = []
+  //     for (const user of users) {
+  //       const fullUserInfo = await this.getUser(user.email, user.password);
+  //       fullUserList.push(fullUserInfo);
+  //     }
+  //     return [fullUserList, more];
+  //   } finally {
+  //     connection.end();
+  //   }
+  // }
 
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
