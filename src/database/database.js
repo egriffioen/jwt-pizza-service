@@ -68,6 +68,10 @@ class DB {
         metrics.recordAuthAttempt(false)
         throw new StatusCodeError('unknown user', 404);
       }
+      if(password==""){
+        metrics.recordAuthAttempt(false)
+        throw new StatusCodeError('password required', 400);
+      }
       metrics.recordAuthAttempt(true)
 
       const roleResult = await this.query(connection, `SELECT * FROM userRole WHERE userId=?`, [user.id]);
@@ -81,16 +85,37 @@ class DB {
     }
   }
 
-  async updateUser(userId, name, email, password) {
+  async updateUser(userId, name, email, newPassword, currentPassword) {
     const connection = await this.getConnection();
+    const userResult = await this.query(
+      connection,
+      `SELECT password FROM user WHERE id=?`,
+      [userId]
+    );
+
+    const user = userResult[0];
+
+    if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
+      throw new StatusCodeError('Incorrect password', 403);
+    }
     try {
       const params = [];
-      if (password) {
-        const hashedPassword = await bcrypt.hash(password, 10);
+      if (newPassword) {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
         params.push(`password='${hashedPassword}'`);
       }
       if (email) {
-        params.push(`email='${email}'`);
+          const existing = await this.query(
+            connection,
+            `SELECT id FROM user WHERE email=?`,
+            [email]
+          );
+
+          if (existing.length > 0 && existing[0].id !== userId) {
+            throw new StatusCodeError('Email already in use', 400);
+          }
+
+          params.push(`email='${email}'`);
       }
       if (name) {
         params.push(`name='${name}'`);
@@ -99,7 +124,7 @@ class DB {
         const query = `UPDATE user SET ${params.join(', ')} WHERE id=${userId}`;
         await this.query(connection, query);
       }
-      return this.getUser(email, password);
+      return this.getUser(email, newPassword);
     } finally {
       connection.end();
     }
@@ -206,11 +231,43 @@ class DB {
     try {
       const orderResult = await this.query(connection, `INSERT INTO dinerOrder (dinerId, franchiseId, storeId, date) VALUES (?, ?, ?, now())`, [user.id, order.franchiseId, order.storeId]);
       const orderId = orderResult.insertId;
+      const cleanItems = [];
+
       for (const item of order.items) {
-        const menuId = await this.getID(connection, 'id', item.menuId, 'menu');
-        await this.query(connection, `INSERT INTO orderItem (orderId, menuId, description, price) VALUES (?, ?, ?, ?)`, [orderId, menuId, item.description, item.price]);
+        const [menuItem] = await this.query(
+          connection,
+          `SELECT id, title, price FROM menu WHERE id=?`,
+          [item.menuId]
+        );
+
+        if (!menuItem) {
+          throw new StatusCodeError('Invalid menu item', 400);
+        }
+
+        await this.query(
+          connection,
+          `INSERT INTO orderItem (orderId, menuId, description, price) VALUES (?, ?, ?, ?)`,
+          [orderId, menuItem.id, menuItem.title, menuItem.price]
+        );
+
+        cleanItems.push({
+          menuId: menuItem.id,
+          description: menuItem.title,
+          price: menuItem.price
+        });
       }
-      return { ...order, id: orderId };
+
+      return {
+        id: orderId,
+        franchiseId: order.franchiseId,
+        storeId: order.storeId,
+        items: cleanItems
+      };
+      // for (const item of order.items) {
+      //   const menuId = await this.getID(connection, 'id', item.menuId, 'menu');
+      //   await this.query(connection, `INSERT INTO orderItem (orderId, menuId, description, price) VALUES (?, ?, ?, ?)`, [orderId, menuId, item.description, item.price]);
+      // }
+      // return { ...order, id: orderId };
     } finally {
       connection.end();
     }
