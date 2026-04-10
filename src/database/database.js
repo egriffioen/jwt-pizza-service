@@ -68,7 +68,7 @@ class DB {
         metrics.recordAuthAttempt(false)
         throw new StatusCodeError('unknown user', 404);
       }
-      if(password==""){
+      if(password=="" || !password){
         metrics.recordAuthAttempt(false)
         throw new StatusCodeError('password required', 400);
       }
